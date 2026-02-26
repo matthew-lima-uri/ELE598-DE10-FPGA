@@ -1,0 +1,44 @@
+# --- Quartus Temporary/Generated Folders ---
+db/
+incremental_db/
+output_files/
+greybox_tmp/
+hc_output/
+hps_isw_software/
+simulation/
+stp/
+qdb/
+tmp-cleartext/
+
+# --- Platform Designer (Qsys) Generated Files ---
+.qsys_edit/
+*.qsys.bak
+
+# --- Compilation Report & Log Files ---
+*.rpt
+*.summary
+*.jdi
+*.pin
+*.done
+*.qws
+*.bak
+*.log
+*.msg
+*.txt
+
+# --- Programming Files ---
+*.sof
+*.pof
+*.rbf
+*.snapshot
+
+# --- System Console & Debugging ---
+*.jtag_reg_brief
+*.sld
+
+# --- OS & IDE Files ---
+.DS_Store
+Thumbs.db
+*.swp
+.vscode/
+.idea/
