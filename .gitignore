@@ -9,6 +9,8 @@ simulation/
 stp/
 qdb/
 tmp-cleartext/
+hps_isw_handoff/
+system/
 
 # --- Platform Designer (Qsys) Generated Files ---
 .qsys_edit/
@@ -42,3 +44,6 @@ Thumbs.db
 *.swp
 .vscode/
 .idea/
+
+# --- Copied from the original vendor project. Just used for reference. ---
+acl_iface_system.qsys
