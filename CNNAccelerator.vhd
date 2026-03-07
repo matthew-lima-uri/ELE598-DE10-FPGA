@@ -4,60 +4,73 @@ USE ieee.numeric_std.ALL;
 
 entity CNNAccelerator is
     Port ( 
-        CLOCK_50 	: 	in 				std_logic;
-		  CLOCK2_50	: 	in 				std_logic;
-		  CLOCK3_50	: 	in 				std_logic;
-		  CLOCK4_50	: 	in 				std_logic;
-        KEY		 	:	in 				std_logic_vector(3 downto 0);
-		  SW			:	in					std_logic_vector(9 downto 0);
-        LEDR	 	: 	out 				std_logic_vector(9 downto 0);
+        CLOCK_50 				: 	in 	std_logic;
+		  CLOCK2_50				: 	in 	std_logic;
+		  CLOCK3_50				: 	in 	std_logic;
+		  CLOCK4_50				: 	in 	std_logic;
+        KEY		 				:	in 	std_logic_vector(3 downto 0);
+		  SW						:	in		std_logic_vector(9 downto 0);
+        LEDR	 				: 	out 	std_logic_vector(9 downto 0);
+		  -- HEX Displays
+		  HEX0					:	out	std_logic_vector(6 downto 0);
+		  HEX1					:	out	std_logic_vector(6 downto 0);
+		  HEX2					:	out	std_logic_vector(6 downto 0);
+		  HEX3					:	out	std_logic_vector(6 downto 0);
+		  HEX4					:	out	std_logic_vector(6 downto 0);
+		  HEX5					:	out	std_logic_vector(6 downto 0);
 		  -- HPS DDR3 Memory
-        HPS_DDR3_ADDR      : out   	std_logic_vector(12 downto 0);
-        HPS_DDR3_BA        : out   	std_logic_vector(2 downto 0);
-        HPS_DDR3_CK_P      : out   	std_logic;
-        HPS_DDR3_CK_N      : out   	std_logic;
-        HPS_DDR3_CKE       : out   	std_logic;
-        HPS_DDR3_CS_N      : out   	std_logic;
-        HPS_DDR3_RAS_N     : out   	std_logic;
-        HPS_DDR3_CAS_N     : out   	std_logic;
-        HPS_DDR3_WE_N      : out   	std_logic;
-        HPS_DDR3_RESET_N   : out   	std_logic;
-        HPS_DDR3_DQ        : inout 	std_logic_vector(7 downto 0);
-        HPS_DDR3_DQS_P     : inout 	std_logic;
-        HPS_DDR3_DQS_N     : inout 	std_logic;
-        HPS_DDR3_ODT       : out   	std_logic;
-        HPS_DDR3_DM        : out   	std_logic;
-        HPS_DDR3_RZQ       : in    	std_logic;
+        HPS_DDR3_ADDR      : 	out   	std_logic_vector(12 downto 0);
+        HPS_DDR3_BA        : 	out   	std_logic_vector(2 downto 0);
+        HPS_DDR3_CK_P      : 	out   	std_logic;
+        HPS_DDR3_CK_N      : 	out   	std_logic;
+        HPS_DDR3_CKE       : 	out   	std_logic;
+        HPS_DDR3_CS_N      : 	out   	std_logic;
+        HPS_DDR3_RAS_N     : 	out   	std_logic;
+        HPS_DDR3_CAS_N     : 	out   	std_logic;
+        HPS_DDR3_WE_N      : 	out   	std_logic;
+        HPS_DDR3_RESET_N   : 	out   	std_logic;
+        HPS_DDR3_DQ        : 	inout 	std_logic_vector(7 downto 0);
+        HPS_DDR3_DQS_P     : 	inout 	std_logic;
+        HPS_DDR3_DQS_N     : 	inout 	std_logic;
+        HPS_DDR3_ODT       : 	out   	std_logic;
+        HPS_DDR3_DM        : 	out   	std_logic;
+        HPS_DDR3_RZQ       : 	in    	std_logic;
         -- HPS I/O (Ethernet, SD Card, USB, UART, I2C)
-        HPS_ENET_GTX_CLK   : out   	std_logic;
-        HPS_ENET_TX_DATA   : out   	std_logic_vector(3 downto 0);
-        HPS_ENET_RX_CLK    : in    	std_logic;
-        HPS_ENET_RX_DATA   : in    	std_logic_vector(3 downto 0);
-        HPS_ENET_MDIO      : inout 	std_logic;
-        HPS_ENET_MDC       : out   	std_logic;
-        HPS_ENET_RX_DV     : in    	std_logic;
-        HPS_ENET_TX_EN     : out   	std_logic;
-        HPS_SD_CMD         : inout 	std_logic;
-        HPS_SD_CLK         : out   	std_logic;
-        HPS_SD_DATA        : inout 	std_logic_vector(3 downto 0);
-        HPS_USB_CLKOUT     : in    	std_logic;
-        HPS_USB_DATA       : inout 	std_logic_vector(7 downto 0);
-        HPS_USB_DIR        : in    	std_logic;
-        HPS_USB_NXT        : in    	std_logic;
-        HPS_USB_STP        : out   	std_logic;
-        HPS_UART_RX        : in    	std_logic;
-        HPS_UART_TX        : out   	std_logic;
-        HPS_I2C1_SCLK      : inout 	std_logic;
-        HPS_I2C1_SDAT      : inout 	std_logic
+        HPS_ENET_GTX_CLK   : 	out   	std_logic;
+        HPS_ENET_TX_DATA   : 	out   	std_logic_vector(3 downto 0);
+        HPS_ENET_RX_CLK    : 	in    	std_logic;
+        HPS_ENET_RX_DATA   : 	in    	std_logic_vector(3 downto 0);
+        HPS_ENET_MDIO      : 	inout 	std_logic;
+        HPS_ENET_MDC       : 	out   	std_logic;
+        HPS_ENET_RX_DV     : 	in    	std_logic;
+        HPS_ENET_TX_EN     : 	out   	std_logic;
+        HPS_SD_CMD         : 	inout 	std_logic;
+        HPS_SD_CLK         : 	out   	std_logic;
+        HPS_SD_DATA        : 	inout 	std_logic_vector(3 downto 0);
+        HPS_USB_CLKOUT     : 	in    	std_logic;
+        HPS_USB_DATA       : 	inout 	std_logic_vector(7 downto 0);
+        HPS_USB_DIR        : 	in    	std_logic;
+        HPS_USB_NXT        : 	in    	std_logic;
+        HPS_USB_STP        : 	out   	std_logic;
+        HPS_UART_RX        : 	in    	std_logic;
+        HPS_UART_TX        : 	out   	std_logic;
+        HPS_I2C1_SCLK      : 	inout 	std_logic;
+        HPS_I2C1_SDAT      : 	inout 	std_logic
     );
 end CNNAccelerator;
 
 architecture arch of CNNAccelerator is
 
-	constant step_val		:	integer						:= 500000;
-	signal	counter		:	unsigned(9 downto 0) 	:= (others => '0');
-	signal	step_down	:	unsigned(31 downto 0)	:= (others => '0');
-	signal	step_latch	:	std_logic					:= '0';
+	constant step_val					:	integer								:= 500000;
+	signal	counter					:	unsigned(9 downto 0) 			:= (others => '0');
+	signal	step_down				:	unsigned(31 downto 0)			:= (others => '0');
+	signal	step_latch				:	std_logic							:= '0';
+	signal	ocm_address       	:  std_logic_vector(9 downto 0) 	:= (others => '0');
+	signal	ocm_chipselect			:  std_logic                    	:= '0';
+	signal	ocm_write         	:  std_logic                    	:= '0';
+	signal	ocm_readdata      	:  std_logic_vector(31 downto 0)	:= (others => '0');
+	signal	ocm_writedata     	:  std_logic_vector(31 downto 0)	:= (others => '0');
+	signal	ocm_byteenable    	:  std_logic_vector(3 downto 0) 	:= (others => '0');
 
 -- Component Declaration
 	component system is
@@ -116,7 +129,14 @@ architecture arch of CNNAccelerator is
             memory_mem_odt                  : out   std_logic;                                        -- mem_odt
             memory_mem_dm                   : out   std_logic;                                        -- mem_dm
             memory_oct_rzqin                : in    std_logic                     := 'X';             -- oct_rzqin
-            reset_reset_n                   : in    std_logic                     := 'X'              -- reset_n
+            ocm_s2_address                  : in    std_logic_vector(9 downto 0)  := (others => 'X'); -- address
+            ocm_s2_chipselect               : in    std_logic                     := 'X';             -- chipselect
+            ocm_s2_clken                    : in    std_logic                     := 'X';             -- clken
+            ocm_s2_write                    : in    std_logic                     := 'X';             -- write
+            ocm_s2_readdata                 : out   std_logic_vector(31 downto 0);                    -- readdata
+            ocm_s2_writedata                : in    std_logic_vector(31 downto 0) := (others => 'X'); -- writedata
+            ocm_s2_byteenable               : in    std_logic_vector(3 downto 0)  := (others => 'X'); -- byteenable
+				reset_reset_n                   : in    std_logic                     := 'X'              -- reset_n
         );
     end component system;
 
@@ -188,13 +208,22 @@ architecture arch of CNNAccelerator is
             memory_mem_dqs_n                => HPS_DDR3_DQS_N,
             memory_mem_odt                  => HPS_DDR3_ODT,
             memory_mem_dm                   => HPS_DDR3_DM,
-            memory_oct_rzqin                => HPS_DDR3_RZQ
+            memory_oct_rzqin                => HPS_DDR3_RZQ,
+				
+				-- OCM
+				ocm_s2_address                  => ocm_address,                 
+            ocm_s2_chipselect               => ocm_chipselect,             
+            ocm_s2_clken                    => '1',                   
+            ocm_s2_write                    => ocm_write,                   
+            ocm_s2_readdata                 => ocm_readdata,                
+            ocm_s2_writedata                => ocm_writedata,               
+            ocm_s2_byteenable               => ocm_byteenable               
         );
     
 	 -- Asynchronous Ties
 	 LEDR			<=	std_logic_vector(counter);
 	 
-	 -- Processes
+	 -- Step down the 50MHz clock to make the blink easier to see
 	 step_process	:	process(CLOCK_50)
 	 begin
 	 
@@ -205,9 +234,9 @@ architecture arch of CNNAccelerator is
 				step_down <= step_down + 1;
 			end if;
 		end if;
-	 
 	 end process step_process;
 	 
+	 -- Blink LEDs
 	 blink_led		: 	process (CLOCK_50)
     begin
         
@@ -221,7 +250,44 @@ architecture arch of CNNAccelerator is
 					step_latch <= '0';
 				end if;
 			end if;		  
-		  
     end process blink_led;
+	 
+	 -- Process to decode a 4-bit nibble into a 7-segment display
+    hex_display	:	process(ocm_readdata)
+        -- Helper function for the decoder
+        function decode_hex(nibble : std_logic_vector(3 downto 0)) return std_logic_vector is
+        begin
+            case nibble is
+                when x"0" => return "1000000"; -- 0
+                when x"1" => return "1111001"; -- 1
+                when x"2" => return "0100100"; -- 2
+                when x"3" => return "0110000"; -- 3
+                when x"4" => return "0011001"; -- 4
+                when x"5" => return "0010010"; -- 5
+                when x"6" => return "0000010"; -- 6
+                when x"7" => return "1111000"; -- 7
+                when x"8" => return "0000000"; -- 8
+                when x"9" => return "0010000"; -- 9
+                when x"A" => return "0001000"; -- A
+                when x"B" => return "0000011"; -- b
+                when x"C" => return "1000110"; -- C
+                when x"D" => return "0100001"; -- d
+                when x"E" => return "0000110"; -- E
+                when x"F" => return "0001110"; -- F
+                when others => return "1111111"; -- Blank
+            end case;
+        end function;
+    begin
+	 
+			-- Always enable the reading interface
+			ocm_chipselect	<= '1';
+			ocm_byteenable	<= (others => '1');
+	 
+        -- Map the lower 16 bits of the memory data to the 4 HEX displays
+			HEX0 <= decode_hex(ocm_readdata(3 downto 0));
+			HEX1 <= decode_hex(ocm_readdata(7 downto 4));
+			HEX2 <= decode_hex(ocm_readdata(11 downto 8));
+			HEX3 <= decode_hex(ocm_readdata(15 downto 12));
+    end process;
 	 
 end arch;
