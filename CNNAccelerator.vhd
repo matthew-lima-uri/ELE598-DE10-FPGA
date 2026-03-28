@@ -65,12 +65,13 @@ architecture arch of CNNAccelerator is
 	signal	counter					:	unsigned(9 downto 0) 			:= (others => '0');
 	signal	step_down				:	unsigned(31 downto 0)			:= (others => '0');
 	signal	step_latch				:	std_logic							:= '0';
-	signal	ocm_address       	:  std_logic_vector(9 downto 0) 	:= (others => '0');
+	signal	ocm_address       	:  std_logic_vector(15 downto 0) 	:= (others => '0');
 	signal	ocm_chipselect			:  std_logic                    	:= '0';
 	signal	ocm_write         	:  std_logic                    	:= '0';
 	signal	ocm_readdata      	:  std_logic_vector(31 downto 0)	:= (others => '0');
 	signal	ocm_writedata     	:  std_logic_vector(31 downto 0)	:= (others => '0');
 	signal	ocm_byteenable    	:  std_logic_vector(3 downto 0) 	:= (others => '0');
+	signal	yolo_result				:	std_logic_vector(31 downto 0)	:= (others => '0');
 
 -- Component Declaration
 	component system is
@@ -129,7 +130,7 @@ architecture arch of CNNAccelerator is
             memory_mem_odt                  : out   std_logic;                                        -- mem_odt
             memory_mem_dm                   : out   std_logic;                                        -- mem_dm
             memory_oct_rzqin                : in    std_logic                     := 'X';             -- oct_rzqin
-            ocm_s2_address                  : in    std_logic_vector(9 downto 0)  := (others => 'X'); -- address
+            ocm_s2_address                  : in    std_logic_vector(15 downto 0)  := (others => 'X'); -- address
             ocm_s2_chipselect               : in    std_logic                     := 'X';             -- chipselect
             ocm_s2_clken                    : in    std_logic                     := 'X';             -- clken
             ocm_s2_write                    : in    std_logic                     := 'X';             -- write
@@ -139,6 +140,16 @@ architecture arch of CNNAccelerator is
 				reset_reset_n                   : in    std_logic                     := 'X'              -- reset_n
         );
     end component system;
+	 
+	component yolo_core is
+		Port ( 
+			clk					:	in		std_logic;
+			reset_n				:	in		std_logic;
+			pixel_data			:	in		std_logic_vector(15 downto 0);
+			weight_data			:	in		std_logic_vector(15 downto 0);
+			yolo_out				:	out	std_logic_vector(31 downto 0)
+		);
+	end component yolo_core;
 
 	begin
 	 
@@ -219,6 +230,17 @@ architecture arch of CNNAccelerator is
             ocm_s2_writedata                => ocm_writedata,               
             ocm_s2_byteenable               => ocm_byteenable               
         );
+		  
+		yolo_inst : component yolo_core
+		port map (
+			clk					=> CLOCK_50,
+			reset_n				=> KEY(0),
+			-- Slice the 32-bit OCM data into two 16-bit chunks
+			pixel_data			=> ocm_readdata(15 downto 0),
+			weight_data			=> ocm_readdata(31 downto 16),
+			-- Catch the MAC output
+			yolo_out				=> yolo_result
+		);
     
 	 -- Asynchronous Ties
 	 LEDR			<=	std_logic_vector(counter);
