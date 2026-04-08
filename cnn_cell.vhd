@@ -4,71 +4,93 @@ USE ieee.numeric_std.ALL;
 
 -- ====================================================================
 -- CNN Component Library Package
--- Import this using: USE work.cnn_pkg.ALL;
 -- ====================================================================
 package cnn_pkg is
+	-- Define a custom array type to pass a 3x3 window of 16-bit data
+	type window_3x3 is array (0 to 8) of std_logic_vector(15 downto 0);
+
 	-- Component Declaration
 	component cnn_cell is
 		Port ( 
 			clk					:	in		std_logic;
 			reset_n				:	in		std_logic;
-			-- Data and Weights
-			data_in				:	in		std_logic_vector(15 downto 0);
-			weight_in			:	in		std_logic_vector(15 downto 0);
-			-- Output
-			mac_out				:	out	std_logic_vector(31 downto 0)
+			-- 3x3 Windows for Image Data and Weights
+			pixel_window		:	in		window_3x3;
+			weight_window		:	in		window_3x3;
+			-- Dot Product Output
+			conv_out				:	out	std_logic_vector(31 downto 0)
 		);
 	end component cnn_cell;
 end package cnn_pkg;
 
 -- ====================================================================
--- CNN Cell Entity Definition
+-- CNN Cell Entity Definition (3x3 Pipelined Convolution)
 -- ====================================================================
 LIBRARY ieee;
 USE ieee.std_logic_1164.ALL;
 USE ieee.numeric_std.ALL;
+USE work.cnn_pkg.ALL;
 
 entity cnn_cell is
 	Port ( 
 		clk					:	in		std_logic;
 		reset_n				:	in		std_logic;
-		-- Data and Weights
-		data_in				:	in		std_logic_vector(15 downto 0);
-		weight_in			:	in		std_logic_vector(15 downto 0);
-		-- Output
-		mac_out				:	out	std_logic_vector(31 downto 0)
+		pixel_window		:	in		window_3x3;
+		weight_window		:	in		window_3x3;
+		conv_out				:	out	std_logic_vector(31 downto 0)
 	);
 end cnn_cell;
 
 architecture rtl of cnn_cell is
 
-	signal	reg_data				:	signed(15 downto 0)			:= (others => '0');
-	signal	reg_weight			:	signed(15 downto 0)			:= (others => '0');
-	signal	reg_mult				:	signed(31 downto 0)			:= (others => '0');
-	signal	reg_accum			:	signed(31 downto 0)			:= (others => '0');
+	-- Internal types for the multiplier pipeline
+	type mult_array is array (0 to 8) of signed(31 downto 0);
+	signal mult_stage : mult_array := (others => (others => '0'));
+
+	-- Adder Tree Pipeline Registers
+	signal add_stg1_0, add_stg1_1, add_stg1_2, add_stg1_3, add_stg1_4 : signed(31 downto 0) := (others => '0');
+	signal add_stg2_0, add_stg2_1, add_stg2_2                         : signed(31 downto 0) := (others => '0');
+	signal add_stg3_0, add_stg3_1                                     : signed(31 downto 0) := (others => '0');
+	signal final_sum                                                  : signed(31 downto 0) := (others => '0');
 
 begin
 
-	-- Synchronous MAC Process
-	mac_process	:	process(clk, reset_n)
+	-- 5-Stage Pipelined 3x3 Convolution Process
+	conv_process : process(clk, reset_n)
 	begin
 		if (reset_n = '0') then
-			reg_data				<= (others => '0');
-			reg_weight			<= (others => '0');
-			reg_mult				<= (others => '0');
-			reg_accum			<= (others => '0');
+			mult_stage  <= (others => (others => '0'));
+			final_sum   <= (others => '0');
 		elsif (rising_edge(clk)) then
-			-- Register the inputs to prevent routing delays
-			reg_data				<= signed(data_in);
-			reg_weight			<= signed(weight_in);
 			
-			-- Multiply and Accumulate
-			reg_mult				<= reg_data * reg_weight;
-			reg_accum			<= reg_accum + reg_mult;
-		end if;
-	end process mac_process;
+			-- STAGE 1: Parallel Multiplication (9 Multipliers firing at once)
+			for i in 0 to 8 loop
+				mult_stage(i) <= signed(pixel_window(i)) * signed(weight_window(i));
+			end loop;
 
-	-- Asynchronous Ties
-	mac_out <= std_logic_vector(reg_accum);
+			-- STAGE 2: Adder Tree Level 1 (Summing pairs)
+			add_stg1_0 <= mult_stage(0) + mult_stage(1);
+			add_stg1_1 <= mult_stage(2) + mult_stage(3);
+			add_stg1_2 <= mult_stage(4) + mult_stage(5);
+			add_stg1_3 <= mult_stage(6) + mult_stage(7);
+			add_stg1_4 <= mult_stage(8); -- Odd man out
+
+			-- STAGE 3: Adder Tree Level 2
+			add_stg2_0 <= add_stg1_0 + add_stg1_1;
+			add_stg2_1 <= add_stg1_2 + add_stg1_3;
+			add_stg2_2 <= add_stg1_4;
+
+			-- STAGE 4: Adder Tree Level 3
+			add_stg3_0 <= add_stg2_0 + add_stg2_1;
+			add_stg3_1 <= add_stg2_2;
+
+			-- STAGE 5: Final Accumulation
+			final_sum  <= add_stg3_0 + add_stg3_1;
+
+		end if;
+	end process conv_process;
+
+	-- Asynchronous Output Tie
+	conv_out <= std_logic_vector(final_sum);
 
 end rtl;
