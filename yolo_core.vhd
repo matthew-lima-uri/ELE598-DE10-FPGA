@@ -11,7 +11,7 @@ entity yolo_core is
 		reset_n				:	in		std_logic;
 		
 		-- Memory Interface (Avalon-MM Master)
-		mem_address			:	out	std_logic_vector(9 downto 0);
+		mem_address			:	out	std_logic_vector(15 downto 0);
 		mem_read				:	out	std_logic;
 		mem_readdata		:	in		std_logic_vector(31 downto 0);
 		
@@ -33,7 +33,7 @@ architecture arch of yolo_core is
 	
 	-- Internal Counters and Control
 	signal read_count			: integer range 0 to 8 := 0;
-	signal start_addr			: unsigned(9 downto 0) := (others => '0');
+	signal start_addr			: unsigned(15 downto 0) := (others => '0');
 	
 	-- CNN Cell Signals
 	signal mac_data_valid	: std_logic := '0';
