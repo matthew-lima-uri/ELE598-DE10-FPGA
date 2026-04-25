@@ -81,6 +81,7 @@ entity cnn_cell is
         last_channel    : in  std_logic;
         
         out_valid       : out std_logic;
+		  mode_1x1 			: in std_logic;
         
         pixel_window    : in  window_3x3;
         weight_window   : in  window_3x3;
@@ -120,21 +121,23 @@ begin
         variable v_biased_sum : signed(31 downto 0);
     begin
         if (reset_n = '0') then
-            mult_stage       <= (others => (others => '0'));
-            valid_sr         <= (others => '0');
-            first_sr         <= (others => '0');
-            last_sr          <= (others => '0');
-            spatial_sum      <= (others => '0');
-            chan_accum       <= (others => '0');
-            final_activation <= (others => '0');
+            mult_stage       	<= (others => (others => '0'));
+            valid_sr         	<= (others => '0');
+            first_sr         	<= (others => '0');
+            last_sr          	<= (others => '0');
+            spatial_sum      	<= (others => '0');
+            chan_accum       	<= (others => '0');
+            final_activation 	<= (others => '0');
+				mode_1x1_sr 		<= (others => '0');
             
         elsif (rising_edge(clk)) then
             if (enable = '1') then
             
                 -- Shift Control Signals
-                valid_sr <= valid_sr(5 downto 0) & data_valid;
-                first_sr <= first_sr(5 downto 0) & first_channel;
-                last_sr  <= last_sr(5 downto 0)  & last_channel;
+                valid_sr 		<= valid_sr(5 downto 0) 	& data_valid;
+                first_sr 		<= first_sr(5 downto 0) 	& first_channel;
+                last_sr  		<= last_sr(5 downto 0)  	& last_channel;
+					 mode_1x1_sr 	<= mode_1x1_sr(5 downto 0) & mode_1x1;
             
                 -- STAGE 1: Parallel Multiplication
                 for i in 0 to 8 loop
@@ -157,8 +160,16 @@ begin
                 add_stg3_0 <= add_stg2_0 + add_stg2_1;
                 add_stg3_1 <= add_stg2_2;
 
-                -- STAGE 5: Spatial Accumulation (3x3 Slice)
-                spatial_sum <= add_stg3_0 + add_stg3_1;
+                -- STAGE 5: Spatial Accumulation (Multiplexed for 1x1 or 3x3)
+					 -- Assumes index (4) represents the center pixel of the 3x3 window array
+					 if (mode_1x1_sr(4) = '1') then
+						  -- 1x1 Mode: Bypass the adder tree entirely. 
+						  -- Only the center multiplier contains valid data.
+						  spatial_sum <= mult_stage(4);
+					 else
+						  -- 3x3 Mode: Utilize the full spatial adder tree
+						  spatial_sum <= add_stg3_0 + add_stg3_1;
+					 end if;
                 
                 -- STAGE 6: Channel Depth Accumulation
                 if (valid_sr(4) = '1') then

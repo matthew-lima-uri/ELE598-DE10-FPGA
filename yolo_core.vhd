@@ -11,19 +11,23 @@ USE work.cnn_pkg.ALL;
 -- ====================================================================
 entity yolo_core is
     Port ( 
-        clk                 : in  std_logic;
-        reset_n             : in  std_logic;
+			clk                 : in  std_logic;
+			reset_n             : in  std_logic;
         
-        -- Memory Interface (Avalon-MM Read/Write Master)
-        mem_address         : out std_logic_vector(15 downto 0);
-        mem_read            : out std_logic;
-        mem_readdata        : in  std_logic_vector(31 downto 0);
-        mem_write           : out std_logic;
-        mem_writedata       : out std_logic_vector(31 downto 0);
+			-- Memory Interface (Avalon-MM Read/Write Master)
+			mem_address         : out std_logic_vector(15 downto 0);
+			mem_read            : out std_logic;
+			mem_readdata        : in  std_logic_vector(31 downto 0);
+			mem_write           : out std_logic;
+			mem_writedata       : out std_logic_vector(31 downto 0);
+		  
+			-- Control signals
+			mode_1x1        : in  std_logic;
+			mode_upsample   : in  std_logic;
         
-        -- Output Stream (For Top-Level Debugging/Verification)
-        yolo_out            : out std_logic_vector(31 downto 0);
-        yolo_valid          : out std_logic
+			-- Output Stream (For Top-Level Debugging/Verification)
+			yolo_out            : out std_logic_vector(31 downto 0);
+			yolo_valid          : out std_logic
     );
 end yolo_core;
 
@@ -71,6 +75,10 @@ architecture arch of yolo_core is
     signal pool_00, pool_01, pool_10, pool_11 : std_logic_vector(31 downto 0) := (others => '0');
     signal pool_out_valid   : std_logic := '0';
     signal pool_max_result  : std_logic_vector(31 downto 0) := (others => '0');
+	 
+	 signal upsample_cnt : integer range 0 to 3 := 0;
+    -- Constant representing the row width of the destination feature map
+    constant DST_ROW_STRIDE : unsigned(15 downto 0) := to_unsigned(26, 16);
     
     -- Memory Pointers
     signal read_ptr         : unsigned(15 downto 0) := BASE_READ_ADDR;
@@ -233,14 +241,43 @@ begin
                     end if;
                     
                 when S_WRITE_BACK =>
-                    -- Execute the Avalon-MM Write transaction
-                    mem_address   <= std_logic_vector(write_ptr);
-                    mem_writedata <= pool_max_result;
-                    mem_write     <= '1';
-                    
-                    -- Increment the write pointer and return to reading the next block
-                    write_ptr     <= write_ptr + 1;
-                    state         <= S_STREAM_READ;
+                    if (mode_upsample = '1') then
+                        -- Upsampling Mode: Execute 4 memory writes for a single output pixel
+                        -- to form a 2x2 nearest-neighbor block.
+                        mem_writedata <= pool_max_result; 
+                        mem_write     <= '1';
+                        
+                        if (upsample_cnt = 0) then
+                            mem_address <= std_logic_vector(write_ptr);
+                        elsif (upsample_cnt = 1) then
+                            mem_address <= std_logic_vector(write_ptr + 1);
+                        elsif (upsample_cnt = 2) then
+                            mem_address <= std_logic_vector(write_ptr + DST_ROW_STRIDE);
+                        elsif (upsample_cnt = 3) then
+                            mem_address <= std_logic_vector(write_ptr + DST_ROW_STRIDE + 1);
+                        end if;
+
+                        if (upsample_cnt = 3) then
+                            -- Block complete. Advance pointers and resume reading.
+                            upsample_cnt <= 0;
+                            -- Advance base pointer by 2 (the width of the newly written block)
+                            write_ptr    <= write_ptr + 2; 
+                            state        <= S_STREAM_READ;
+                        else
+                            -- Remain in write state
+                            upsample_cnt <= upsample_cnt + 1;
+                            state        <= S_WRITE_BACK;
+                        end if;
+                        
+                    else
+                        -- Standard Convolution Mode: Single write cycle
+                        mem_address   <= std_logic_vector(write_ptr);
+                        mem_writedata <= pool_max_result;
+                        mem_write     <= '1';
+                        
+                        write_ptr     <= write_ptr + 1;
+                        state         <= S_STREAM_READ;
+                    end if;
                     
                 when others =>
                     state <= S_IDLE;
