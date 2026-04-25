@@ -143,16 +143,18 @@ architecture arch of CNNAccelerator is
     end component system;
 	 
 	component yolo_core is
-		Port ( 
-			clk					:	in		std_logic;
-			reset_n				:	in		std_logic;
-			mem_address			:	out	std_logic_vector(15 downto 0);
-			mem_read				:	out	std_logic;
-			mem_readdata		:	in		std_logic_vector(31 downto 0);
-			yolo_out				:	out	std_logic_vector(31 downto 0);
-			yolo_valid			:	out	std_logic
-		);
-	end component yolo_core;
+        Port ( 
+            clk             : in  std_logic;
+            reset_n         : in  std_logic;
+            mem_address     : out std_logic_vector(15 downto 0);
+            mem_read        : out std_logic;
+            mem_readdata    : in  std_logic_vector(31 downto 0);
+            mem_write       : out std_logic;
+            mem_writedata   : out std_logic_vector(31 downto 0);
+            yolo_out        : out std_logic_vector(31 downto 0);
+            yolo_valid      : out std_logic
+        );
+    end component yolo_core;
 
 	begin
 	 
@@ -235,15 +237,21 @@ architecture arch of CNNAccelerator is
         );
 		  
 		yolo_inst : component yolo_core
-		port map (
-			clk					=> CLOCK_50,
-			reset_n				=> KEY(0),
-			mem_address			=> ocm_address,
-			mem_read				=> ocm_write,  
-			mem_readdata		=> ocm_readdata,
-			yolo_out				=> yolo_result,
-			yolo_valid			=> yolo_valid_flag
-		);
+        port map (
+            clk             => CLOCK_50,
+            reset_n         => KEY(0),
+            
+            -- Memory Interface
+            mem_address     => ocm_address,
+            mem_read        => open,             -- Qsys OCM chipselect acts as the read enable
+            mem_readdata    => ocm_readdata,
+            mem_write       => ocm_write,        -- Drives the Qsys OCM write enable
+            mem_writedata   => ocm_writedata,    -- Drives the Qsys OCM write data bus
+            
+            -- Output Datapath
+            yolo_out        => yolo_result,
+            yolo_valid      => yolo_valid_flag
+        );
     
 	 -- Asynchronous Ties
 	 LEDR			<=	std_logic_vector(counter);
@@ -303,16 +311,15 @@ architecture arch of CNNAccelerator is
             end case;
         end function;
     begin
-	 
-			-- Always enable the reading interface
-			ocm_chipselect	<= '1';
-			ocm_byteenable	<= (others => '1');
-	 
-        -- Map the lower 16 bits of the memory data to the 4 HEX displays
-			HEX0 <= decode_hex(ocm_readdata(3 downto 0));
-			HEX1 <= decode_hex(ocm_readdata(7 downto 4));
-			HEX2 <= decode_hex(ocm_readdata(11 downto 8));
-			HEX3 <= decode_hex(ocm_readdata(15 downto 12));
+        -- Map the lower 16 bits of the YOLO pipeline result to the 4 HEX displays
+        HEX0 <= decode_hex(yolo_result(3 downto 0));
+        HEX1 <= decode_hex(yolo_result(7 downto 4));
+        HEX2 <= decode_hex(yolo_result(11 downto 8));
+        HEX3 <= decode_hex(yolo_result(15 downto 12));
     end process;
+
+    -- Concurrent assignments for OCM control
+    ocm_chipselect <= '1';
+    ocm_byteenable <= (others => '1');
 	 
 end arch;

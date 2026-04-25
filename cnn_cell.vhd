@@ -5,33 +5,59 @@ USE ieee.numeric_std.ALL;
 -- ====================================================================
 -- CNN Component Library Package
 -- ====================================================================
-package cnn_pkg is
-    -- Custom array type for 3x3 spatial data windows
-    type window_3x3 is array (0 to 8) of std_logic_vector(15 downto 0);
+LIBRARY ieee;
+USE ieee.std_logic_1164.ALL;
+USE ieee.numeric_std.ALL;
 
-    -- Component Declaration
+package cnn_pkg is
+    -- Data Types
+    type window_3x3 is array (0 to 8) of std_logic_vector(15 downto 0);
+    type window_2x2_32b is array (0 to 3) of std_logic_vector(31 downto 0);
+
+    -- 1. CNN Cell (MAC + Bias + Activation)
     component cnn_cell is
         Port ( 
             clk             : in  std_logic;
             reset_n         : in  std_logic;
-            
-            -- Control Logic
-            enable          : in  std_logic; 
-            data_valid      : in  std_logic; 
-            first_channel   : in  std_logic; 
-            last_channel    : in  std_logic; 
-            
-            out_valid       : out std_logic; 
-            
-            -- Data Payload
+            enable          : in  std_logic;
+            data_valid      : in  std_logic;
+            first_channel   : in  std_logic;
+            last_channel    : in  std_logic;
+            out_valid       : out std_logic;
             pixel_window    : in  window_3x3;
             weight_window   : in  window_3x3;
             bias_in         : in  std_logic_vector(31 downto 0);
-            
-            -- Final Activated Output
             conv_out        : out std_logic_vector(31 downto 0)
         );
-    end component cnn_cell;
+    end component;
+
+    -- 2. Input Line Buffer (16-bit Pixels)
+    component line_buffer is
+        Generic ( IMAGE_WIDTH : integer := 416 );
+        Port ( 
+            clk             : in  std_logic;
+            reset_n         : in  std_logic;
+            shift_en        : in  std_logic;
+            pixel_in        : in  std_logic_vector(15 downto 0);
+            window_out      : out window_3x3
+        );
+    end component;
+
+    -- 3. Max Pooling (2x2)
+    component max_pool_2x2 is
+        Port ( 
+            clk             : in  std_logic;
+            reset_n         : in  std_logic;
+            enable          : in  std_logic;
+            data_valid      : in  std_logic;
+            pixel_00        : in  std_logic_vector(31 downto 0);
+            pixel_01        : in  std_logic_vector(31 downto 0);
+            pixel_10        : in  std_logic_vector(31 downto 0);
+            pixel_11        : in  std_logic_vector(31 downto 0);
+            out_valid       : out std_logic;
+            max_out         : out std_logic_vector(31 downto 0)
+        );
+    end component;
 end package cnn_pkg;
 
 -- ====================================================================
