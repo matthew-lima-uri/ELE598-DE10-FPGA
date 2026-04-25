@@ -24,6 +24,7 @@ package cnn_pkg is
             first_channel   : in  std_logic;
             last_channel    : in  std_logic;
             out_valid       : out std_logic;
+            mode_1x1        : in  std_logic;
             pixel_window    : in  window_3x3;
             weight_window   : in  window_3x3;
             bias_in         : in  std_logic_vector(31 downto 0);
@@ -113,6 +114,7 @@ architecture rtl of cnn_cell is
     signal valid_sr : std_logic_vector(6 downto 0) := (others => '0');
     signal first_sr : std_logic_vector(6 downto 0) := (others => '0');
     signal last_sr  : std_logic_vector(6 downto 0) := (others => '0');
+	 signal mode_1x1_sr  : std_logic_vector(6 downto 0) := (others => '0');
 
 begin
 

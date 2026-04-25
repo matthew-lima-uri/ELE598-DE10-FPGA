@@ -72,14 +72,24 @@ architecture arch of CNNAccelerator is
 	signal	ocm_writedata     	:  std_logic_vector(31 downto 0)	:= (others => '0');
 	signal	ocm_byteenable    	:  std_logic_vector(3 downto 0) 	:= (others => '0');
 	signal	yolo_result				:	std_logic_vector(31 downto 0)	:= (others => '0');
-	signal 	yolo_valid_flag 			: std_logic := '0';
+	signal	csr_ctr_s				:	std_logic_vector(31 downto 0)	:= (others => '0');
+	signal	csr_read_s				:	std_logic_vector(31 downto 0)	:= (others => '0');
+	signal	csr_write_s				:	std_logic_vector(31 downto 0)	:= (others => '0');
+	signal	csr_length_s			:	std_logic_vector(31 downto 0) := (others => '0');
+	signal	csr_layer_done			:	std_logic := '0';
+	signal 	yolo_valid_flag 		:  std_logic := '0';
 
 -- Component Declaration
 	component system is
         port (
             clk_clk                         : in    std_logic                     := 'X';             -- clk
             global_reset_reset_n            : in    std_logic                     := 'X';             -- reset_n
-            hps_io_hps_io_emac1_inst_TX_CLK : out   std_logic;                                        -- hps_io_emac1_inst_TX_CLK
+            reg_control_external_connection_export 		: out   std_logic_vector(31 downto 0);                    -- export
+            reg_read_external_connection_export    		: out   std_logic_vector(31 downto 0);                    -- export
+            reg_write_external_connection_export   		: out   std_logic_vector(31 downto 0);                     -- export
+				reg_length_external_connection_export   		: out   std_logic_vector(31 downto 0);                     -- export
+				reg_layer_done_external_connection_export   	: in    std_logic;                     -- export
+				hps_io_hps_io_emac1_inst_TX_CLK : out   std_logic;                                        -- hps_io_emac1_inst_TX_CLK
             hps_io_hps_io_emac1_inst_TXD0   : out   std_logic;                                        -- hps_io_emac1_inst_TXD0
             hps_io_hps_io_emac1_inst_TXD1   : out   std_logic;                                        -- hps_io_emac1_inst_TXD1
             hps_io_hps_io_emac1_inst_TXD2   : out   std_logic;                                        -- hps_io_emac1_inst_TXD2
@@ -144,15 +154,20 @@ architecture arch of CNNAccelerator is
 	 
 	component yolo_core is
         Port ( 
-            clk             : in  std_logic;
-            reset_n         : in  std_logic;
-            mem_address     : out std_logic_vector(15 downto 0);
-            mem_read        : out std_logic;
-            mem_readdata    : in  std_logic_vector(31 downto 0);
-            mem_write       : out std_logic;
-            mem_writedata   : out std_logic_vector(31 downto 0);
-            yolo_out        : out std_logic_vector(31 downto 0);
-            yolo_valid      : out std_logic
+            clk             		: in  std_logic;
+            reset_n         		: in  std_logic;
+            mem_address     		: out std_logic_vector(15 downto 0);
+            mem_read        		: out std_logic;
+            mem_readdata    		: in  std_logic_vector(31 downto 0);
+            mem_write       		: out std_logic;
+            mem_writedata   		: out std_logic_vector(31 downto 0);
+				csr_control				: in 	std_logic_vector(31 downto 0)	:= (others => '0');
+				csr_read	          	: in  std_logic_vector(31 downto 0)	:= (others => '0');
+				csr_write      		: in std_logic_vector(31 downto 0)	:= (others => '0');
+            csr_length           : in  std_logic_vector(31 downto 0);
+				layer_done           : out std_logic;
+				yolo_out        		: out std_logic_vector(31 downto 0);
+            yolo_valid      		: out std_logic
         );
     end component yolo_core;
 
@@ -163,7 +178,13 @@ architecture arch of CNNAccelerator is
             clk_clk                         => CLOCK_50,
             global_reset_reset_n            => KEY(0),
             reset_reset_n                   => KEY(0),
-            
+				
+				-- CSR
+				reg_control_external_connection_export			=>	csr_ctr_s,
+				reg_read_external_connection_export				=>	csr_read_s,
+				reg_write_external_connection_export			=>	csr_write_s,
+				reg_length_external_connection_export   		=> csr_length_s,
+            reg_layer_done_external_connection_export		=> csr_layer_done,
             -- Ethernet
             hps_io_hps_io_emac1_inst_TX_CLK => HPS_ENET_GTX_CLK,
             hps_io_hps_io_emac1_inst_TXD0   => HPS_ENET_TX_DATA(0),
@@ -240,6 +261,13 @@ architecture arch of CNNAccelerator is
         port map (
             clk             => CLOCK_50,
             reset_n         => KEY(0),
+				
+				-- CSR Interface
+				csr_control		 => csr_ctr_s,
+				csr_read			 => csr_read_s,
+				csr_write		 => csr_write_s,
+				csr_length      => csr_length_s,
+				layer_done      => csr_layer_done,
             
             -- Memory Interface
             mem_address     => ocm_address,

@@ -31,72 +31,74 @@ end line_buffer;
 
 architecture rtl of line_buffer is
 
-    -- Inferable Block RAM types for the two row buffers
     type row_ram_type is array (0 to IMAGE_WIDTH - 1) of std_logic_vector(15 downto 0);
-    
-    -- RAM blocks
     signal row_fifo_1   : row_ram_type := (others => (others => '0'));
     signal row_fifo_2   : row_ram_type := (others => (others => '0'));
     
-    -- Write/Read Pointers
     signal ptr          : integer range 0 to IMAGE_WIDTH - 1 := 0;
     
-    -- Shift registers for the 3x3 window extraction
-    signal r0_c0, r0_c1, r0_c2 : std_logic_vector(15 downto 0) := (others => '0'); -- Top row
-    signal r1_c0, r1_c1, r1_c2 : std_logic_vector(15 downto 0) := (others => '0'); -- Middle row
-    signal r2_c0, r2_c1, r2_c2 : std_logic_vector(15 downto 0) := (others => '0'); -- Bottom row (Current incoming)
+    -- Internal column tracker for Zero-Padding
+    signal col_cnt      : integer range 0 to IMAGE_WIDTH - 1 := 0;
+
+    signal r0_c0, r0_c1, r0_c2 : std_logic_vector(15 downto 0) := (others => '0');
+    signal r1_c0, r1_c1, r1_c2 : std_logic_vector(15 downto 0) := (others => '0');
+    signal r2_c0, r2_c1, r2_c2 : std_logic_vector(15 downto 0) := (others => '0');
 
 begin
 
     buffer_process : process(clk, reset_n)
     begin
         if (reset_n = '0') then
-            ptr   <= 0;
+            ptr     <= 0;
+            col_cnt <= 0;
             r0_c0 <= (others => '0'); r0_c1 <= (others => '0'); r0_c2 <= (others => '0');
             r1_c0 <= (others => '0'); r1_c1 <= (others => '0'); r1_c2 <= (others => '0');
             r2_c0 <= (others => '0'); r2_c1 <= (others => '0'); r2_c2 <= (others => '0');
             
         elsif (rising_edge(clk)) then
             if (shift_en = '1') then
-            
-                -- 1. Read from the FIFOs to get the historical vertical pixels
-                -- r1_c2 gets the pixel from 1 row ago, r0_c2 gets the pixel from 2 rows ago
                 r1_c2 <= row_fifo_1(ptr);
                 r0_c2 <= row_fifo_2(ptr);
                 
-                -- 2. Write the current incoming pixel and the cascading row pixel to the FIFOs
                 row_fifo_1(ptr) <= pixel_in;
                 row_fifo_2(ptr) <= row_fifo_1(ptr);
                 
-                -- 3. Shift the horizontal window (Columns)
-                -- Bottom Row (Incoming Stream)
-                r2_c0 <= r2_c1;
-                r2_c1 <= r2_c2;
-                r2_c2 <= pixel_in;
+                r2_c0 <= r2_c1; r2_c1 <= r2_c2; r2_c2 <= pixel_in;
+                r1_c0 <= r1_c1; r1_c1 <= r1_c2;
+                r0_c0 <= r0_c1; r0_c1 <= r0_c2;
                 
-                -- Middle Row (1 Row Delayed)
-                r1_c0 <= r1_c1;
-                r1_c1 <= r1_c2;
-                
-                -- Top Row (2 Rows Delayed)
-                r0_c0 <= r0_c1;
-                r0_c1 <= r0_c2;
-                
-                -- 4. Manage the circular pointer
                 if (ptr = IMAGE_WIDTH - 1) then
                     ptr <= 0;
                 else
                     ptr <= ptr + 1;
+                end if;
+
+                -- Track the incoming stream column to calculate edge padding
+                if (col_cnt = IMAGE_WIDTH - 1) then
+                    col_cnt <= 0;
+                else
+                    col_cnt <= col_cnt + 1;
                 end if;
                 
             end if;
         end if;
     end process buffer_process;
 
-    -- Map the internal shift registers directly to the output window array
-    -- This matches the expected format of the cnn_cell
-    window_out(0) <= r0_c0; window_out(1) <= r0_c1; window_out(2) <= r0_c2;
-    window_out(3) <= r1_c0; window_out(4) <= r1_c1; window_out(5) <= r1_c2;
-    window_out(6) <= r2_c0; window_out(7) <= r2_c1; window_out(8) <= r2_c2;
+    -- Multiplex the output window to enforce "Same" padding
+    
+    -- Left Edge Padding (Forces Left Column to 0)
+    window_out(0) <= (others => '0') when (col_cnt = 1) else r0_c0;
+    window_out(3) <= (others => '0') when (col_cnt = 1) else r1_c0;
+    window_out(6) <= (others => '0') when (col_cnt = 1) else r2_c0;
+
+    -- Center Column (Always valid)
+    window_out(1) <= r0_c1;
+    window_out(4) <= r1_c1;
+    window_out(7) <= r2_c1;
+
+    -- Right Edge Padding (Forces Right Column to 0)
+    window_out(2) <= (others => '0') when (col_cnt = 0) else r0_c2;
+    window_out(5) <= (others => '0') when (col_cnt = 0) else r1_c2;
+    window_out(8) <= (others => '0') when (col_cnt = 0) else r2_c2;
 
 end rtl;
